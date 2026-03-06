@@ -3,3 +3,14 @@ WBP_clcoktime:시간 조정 관련 위젯 블루프린트. 게임 시작시 레�
 WBP_diary sectionn:일기 쓸수 있는 위젯. 일기 제목 작성 할수 있도록 editable로 편집. 중간에 작성하고 나서 다시 메인메뉴 돌아가서 작성 버튼 누를시 버그 발생하는 것을 방지하기 위하여 초기화 노드 사용
 WBP_diaryslot:diary sectionn 첫 화면에서 볼수 있는 내가 저장한 일기들을 볼수 있도록 만든 슬롯 버튼들 
 WBP_timehud:게임 플레이 화면 상단 왼쪽에 표시되는 인게임 시각 표시
+---------------------------------------------------------------
+2026.3.06일일자 업로드 및 주요 개선 사항 설명 
+WBP_clocktime:기존 상호작용시 처음에는 대화형식으로 나타나도록함. 버튼누르면 대화 형식으로 선택지 3개 고르도록 함. 마우스커서 관련 위젯들 동봉하여 사용하길 바람
+wbp_diary sectionn 과 wbp_pixelart:감정 고르기 키워드 로직 변경 및 수정, 체크 할시 체크리스트만 지워지는 기능 구현. 자세한 사항은 내부 블루프린트 주석 읽기 바람 BP 내부에 버그 방지로 더미 블루프린트 연결안한거 있으니 버그 발생시 사용하기 바람
+wbp_diary slot and wbp_pixelsave:요쪽은 체크리스트 관련 만 VARiable 체크하여 별다른 수정사항은 없음
+wbp_pixelunit and wbp_pixelunitreadonly:pixel unit은 픽셀아트 그릴때 쓰는 생성되는 타일, readonly 쪽은 readonly 쪽 영역 들어갈떄 생성되는 픽셀 타일, 로직 충돌 방지를 위하여 씀
+wbp_eraser and wbp_cursor:그냥 마우스 커서 포인터 디자인 관련된 것들 필요해서 적용
+주의사항: 프로젝트세팅->cursor 항목가서 소프트 웨어 커서 항목에 custom ->한뒤 wbp_cursorhand 적용. 이래야지 위젯상에서 Default computer cursor가 아닌 인게임 적용된 handcursor 나타나도록 로직 짬
+그 외의 사항:wbp_clocktime 쪽 bp 상호작용하는 static mesh 침대로 바꿈. 임의의 아무 침대로 변경하기 바람
+감정키워드 고르는 쪽 버그 발생시 연락주길 바람
+----------------------------------------------------------
