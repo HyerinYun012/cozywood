@@ -1,0 +1,15 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\serverproject\\llmtest\\source\\llmtest\\variant_sidescrolling\\interfaces\\sidescrollinginteractable.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\x64\\llmtesteditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\llmtest\\definitions.llmtest.h",
+            "c:\\serverproject\\llmtest\\source\\llmtest\\variant_sidescrolling\\interfaces\\sidescrollinginteractable.h",
+            "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\unrealeditor\\inc\\llmtest\\uht\\sidescrollinginteractable.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

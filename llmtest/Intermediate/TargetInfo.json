@@ -1,0 +1,14 @@
+{
+	"Targets": [
+		{
+			"Name": "llmtest",
+			"Path": "..\\Source\\llmtest.Target.cs",
+			"Type": "Game"
+		},
+		{
+			"Name": "llmtestEditor",
+			"Path": "..\\Source\\llmtestEditor.Target.cs",
+			"Type": "Editor"
+		}
+	]
+}

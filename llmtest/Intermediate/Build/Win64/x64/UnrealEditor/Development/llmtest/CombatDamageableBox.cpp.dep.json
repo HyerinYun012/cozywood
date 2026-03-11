@@ -1,0 +1,17 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\serverproject\\llmtest\\source\\llmtest\\variant_combat\\gameplay\\combatdamageablebox.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\x64\\llmtesteditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\llmtest\\definitions.llmtest.h",
+            "c:\\serverproject\\llmtest\\source\\llmtest\\variant_combat\\gameplay\\combatdamageablebox.h",
+            "c:\\serverproject\\llmtest\\source\\llmtest\\variant_combat\\interfaces\\combatdamageable.h",
+            "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\unrealeditor\\inc\\llmtest\\uht\\combatdamageable.generated.h",
+            "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\unrealeditor\\inc\\llmtest\\uht\\combatdamageablebox.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

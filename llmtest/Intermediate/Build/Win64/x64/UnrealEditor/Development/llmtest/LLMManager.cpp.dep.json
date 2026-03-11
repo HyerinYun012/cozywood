@@ -1,0 +1,21 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\serverproject\\llmtest\\source\\llmtest\\llmmanager.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\x64\\llmtesteditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\llmtest\\definitions.llmtest.h",
+            "c:\\serverproject\\llmtest\\source\\llmtest\\llmmanager.h",
+            "c:\\program files\\epic games\\ue_5.7\\engine\\source\\runtime\\online\\http\\public\\interfaces\\ihttprequest.h",
+            "c:\\program files\\epic games\\ue_5.7\\engine\\source\\runtime\\online\\http\\public\\interfaces\\ihttpbase.h",
+            "c:\\program files\\epic games\\ue_5.7\\engine\\source\\runtime\\online\\http\\public\\interfaces\\ihttpresponse.h",
+            "c:\\program files\\epic games\\ue_5.7\\engine\\source\\runtime\\online\\http\\public\\interfaces\\ihttpresponsecodes.inl",
+            "c:\\program files\\epic games\\ue_5.7\\engine\\source\\runtime\\online\\http\\public\\interfaces\\ihttpresponsecodes.inl",
+            "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\unrealeditor\\inc\\llmtest\\uht\\llmmanager.generated.h",
+            "c:\\program files\\epic games\\ue_5.7\\engine\\source\\runtime\\online\\http\\public\\httpmodule.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

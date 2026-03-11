@@ -1,0 +1,19 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\serverproject\\llmtest\\source\\llmtest\\llmtestgamemode.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\x64\\llmtesteditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\llmtest\\definitions.llmtest.h",
+            "c:\\serverproject\\llmtest\\source\\llmtest\\llmtestgamemode.h",
+            "c:\\program files\\epic games\\ue_5.7\\engine\\source\\runtime\\engine\\classes\\gameframework\\gamemodebase.h",
+            "c:\\program files\\epic games\\ue_5.7\\engine\\source\\runtime\\engine\\classes\\engine\\serverstatreplicator.h",
+            "c:\\program files\\epic games\\ue_5.7\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\serverstatreplicator.generated.h",
+            "c:\\program files\\epic games\\ue_5.7\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\gamemodebase.generated.h",
+            "c:\\serverproject\\llmtest\\intermediate\\build\\win64\\unrealeditor\\inc\\llmtest\\uht\\llmtestgamemode.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}
