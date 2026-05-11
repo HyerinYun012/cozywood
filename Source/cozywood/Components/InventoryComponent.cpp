@@ -1,5 +1,7 @@
 ﻿#include "InventoryComponent.h"
 #include "../Items/ItemBase.h"
+#include "../Save/GardenSave.h"
+#include "Kismet/GameplayStatics.h"
 
 UInventoryComponent::UInventoryComponent()
 {
@@ -12,15 +14,61 @@ void UInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	for (FName ItemID : DefaultStartingItems)
-	{
-		// ID를 던져서 아이템 객체를 인벤토리에 넣는다.
-		AddStartingItemByID(ItemID, 1);
-	}
-
+	// 저장 파일에서 인벤토리를 먼저 복구한 뒤, 이후 변경 시 자동 저장되도록 바인딩
+	LoadInventory();
+	OnInventoryUpdated.AddUObject(this, &UInventoryComponent::SaveInventory);
 }
 
-// 임의로 초기 아이템을 인벤에 넣는 것(기능 테스트용 함수) -> 지울거임
+// 저장 파일 → 인벤토리 복구 (BeginPlay 시 1회 호출, 저장 파일 없으면 빈 인벤토리로 시작)
+void UInventoryComponent::LoadInventory()
+{
+	if (!ItemDataTable) return;
+	if (!UGameplayStatics::DoesSaveGameExist(SaveSlotName, 0)) return;
+
+	UGardenSave* SaveInstance = Cast<UGardenSave>(UGameplayStatics::LoadGameFromSlot(SaveSlotName, 0));
+	if (!SaveInstance) return;
+
+	for (const FSavedInventoryItem& SavedItem : SaveInstance->SavedInventoryItems)
+	{
+		if (SavedItem.Quantity > 0)
+		{
+			AddStartingItemByID(SavedItem.ItemID, SavedItem.Quantity);
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("인벤토리 불러오기 완료: %d종 아이템 복구됨."), SaveInstance->SavedInventoryItems.Num());
+}
+
+// 인벤토리 현재 상태를 저장 파일에 기록 (OnInventoryUpdated 브로드캐스트 시 자동 호출)
+void UInventoryComponent::SaveInventory()
+{
+	// 기존 저장 파일을 먼저 불러와서 가구 데이터를 보존한 뒤 인벤토리만 갱신
+	UGardenSave* SaveInstance = nullptr;
+	if (UGameplayStatics::DoesSaveGameExist(SaveSlotName, 0))
+	{
+		SaveInstance = Cast<UGardenSave>(UGameplayStatics::LoadGameFromSlot(SaveSlotName, 0));
+	}
+	if (!SaveInstance)
+	{
+		SaveInstance = Cast<UGardenSave>(UGameplayStatics::CreateSaveGameObject(UGardenSave::StaticClass()));
+	}
+
+	SaveInstance->SavedInventoryItems.Empty();
+	for (UItemBase* Item : InventoryContents)
+	{
+		if (Item && Item->Quantity > 0)
+		{
+			FSavedInventoryItem SavedItem;
+			SavedItem.ItemID = Item->ItemID;
+			SavedItem.Quantity = Item->Quantity;
+			SaveInstance->SavedInventoryItems.Add(SavedItem);
+		}
+	}
+
+	UGameplayStatics::SaveGameToSlot(SaveInstance, SaveSlotName, 0);
+}
+
+// ID를 받아서 데이터 테이블 기반으로 아이템 객체를 생성해 인벤토리에 추가 (로드 및 픽업 공용)
 void UInventoryComponent::AddStartingItemByID(FName ItemID, int32 AmountToAdd)
 {
 	if (!ItemDataTable) return;
@@ -91,13 +139,22 @@ int32 UInventoryComponent::CalculateNumberForFullStack(UItemBase* StackableItem,
 
 int32 UInventoryComponent::RemoveAmountOfItem(UItemBase* ItemIn, int32 DesiredAmountToRemove)
 {
-	const int32 ActulaAmountToRemove = FMath::Min(DesiredAmountToRemove, ItemIn->Quantity);
+	if (!ItemIn) return 0; // 방어 코드 추가
 
-	ItemIn->SetQuantity(ItemIn->Quantity - ActulaAmountToRemove);
+	const int32 ActualAmountToRemove = FMath::Min(DesiredAmountToRemove, ItemIn->Quantity);
+
+	// 1. 수량만 먼저 깎습니다.
+	ItemIn->SetQuantity(ItemIn->Quantity - ActualAmountToRemove);
+
+	// 2. 수량이 0 이하가 되었다면 배열에서 안전하게 완전히 뽑아냄
+	if (ItemIn->Quantity <= 0)
+	{
+		InventoryContents.RemoveSingle(ItemIn);
+	}
 
 	OnInventoryUpdated.Broadcast();
 
-	return ActulaAmountToRemove;
+	return ActualAmountToRemove;
 }
 
 void UInventoryComponent::SplitExistingStack(UItemBase* ItemIn, const int32 AmountToSplit)
@@ -157,7 +214,7 @@ int32 UInventoryComponent::HandleStackableItems(UItemBase* ItemIn, int32 Request
 
 		// 새 복사본 생성 후 인벤토리에 추가 (AddNewItem 내부에서 이중 복사되지 않게 처리)
 		UItemBase* NewItemCopy = ItemIn->CreateItemCopy();
-		NewItemCopy->bIsCopy = true; // 확실한 꼬임 방지
+		NewItemCopy->bIsCopy = true;
 		AddNewItem(NewItemCopy, AmountToAddThisSlot);
 
 		AmountToDistribute -= AmountToAddThisSlot;
@@ -202,19 +259,36 @@ void UInventoryComponent::RemoveItemByActorClass(TSubclassOf<AActor> InClass)
 {
 	if (!InClass) return;
 
-	for (int32 i = 0; i < InventoryContents.Num(); ++i)
+	UItemBase* FoundItem = nullptr;
+
+	// 1단계: 지울 아이템을 찾기만 함 (배열을 건드리지 않음)
+	for (UItemBase* Item : InventoryContents)
 	{
-		UItemBase* Item = InventoryContents[i];
 		if (Item && Item->VisualData.ActorClass == InClass)
 		{
-			Item->SetQuantity(Item->Quantity - 1);
-
-			UE_LOG(LogTemp, Log, TEXT("아이템 차감 성공: %s (남은 수량: %d)"), *Item->TextData.Name.ToString(), Item->Quantity);
-			return;
+			FoundItem = Item;
+			break;
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("차감할 아이템을 찾지 못했습니다."));
+	// 2단계: 찾은 아이템이 있다면, 반복문 밖에서 안전하게 차감 및 삭제 진행
+	if (FoundItem)
+	{
+		FoundItem->SetQuantity(FoundItem->Quantity - 1);
+
+		// 수량이 0 이하가 되면 배열에서 완전히 제거
+		if (FoundItem->Quantity <= 0)
+		{
+			InventoryContents.RemoveSingle(FoundItem);
+		}
+
+		OnInventoryUpdated.Broadcast();
+		UE_LOG(LogTemp, Log, TEXT("아이템 차감 성공: %s (남은 수량: %d)"), *FoundItem->TextData.Name.ToString(), FoundItem->Quantity);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("차감할 아이템을 찾지 못함"));
+	}
 }
 
 void UInventoryComponent::RemoveSingleInstanceOfItem(UItemBase* ItemToRemove)

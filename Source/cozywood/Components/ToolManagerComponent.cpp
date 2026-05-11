@@ -18,7 +18,7 @@ void UToolManagerComponent::EquipTool(UItemBase* ToolItem, UStaticMeshComponent*
 {
 	if (!ToolItem || !TargetMeshComp)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("도구 데이터 혹은 목표 메시 컴포넌트가 유효하지 않습니다."));
+		UE_LOG(LogTemp, Warning, TEXT("도구 데이터 혹은 목표 메시 컴포넌트가 유효하지 않음"));
 		return;
 	}
 

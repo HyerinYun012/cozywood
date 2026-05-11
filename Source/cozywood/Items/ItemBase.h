@@ -58,7 +58,6 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Item")
 	FORCEINLINE bool IsStackable() const {
-		// return Category == EItemCategory::Seed;
 		return bIsStackable;
 	}
 

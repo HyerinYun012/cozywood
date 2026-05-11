@@ -5,25 +5,39 @@
 #include "ShopBuyWidget.generated.h"
 
 class UButton;
-class UWrapBox;
+class UPanelWidget;
 class UTextBlock;
-class UImage;
-class UTexture2D;
 class UShopItemSlotWidget;
 class UInventoryComponent;
 class UEconomyComponent;
-class UWidget;
 
 UCLASS()
 class COZYWOOD_API UShopBuyWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
+	UPROPERTY()
+	UInventoryComponent* CachedInventory = nullptr;
+
+	UPROPERTY()
+	UEconomyComponent* CachedEconomy = nullptr;
+
+	UPROPERTY()
+	class UShopItemSlotWidget* CurrentlySelectedSlot;
+
 public:
-	void SelectShopItem(const FName& InItemID, const FText& InName, const FText& InDescription, int32 InPrice, UTexture2D* InIcon);
+	// Called by slot widget's inline buy button
+	void ExecuteBuy(const FName& ItemID, int32 Price);
+
+	// Called explicitly when the widget is shown (also fires from NativeConstruct)
+	void RebuildShopList();
+	void OnSlotSelected(class UShopItemSlotWidget* SelectedSlot);
+	void DeselectCurrentSlot();
 
 protected:
 	virtual void NativeConstruct() override;
+
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 	UFUNCTION()
 	void OnClickedBack();
@@ -32,19 +46,11 @@ protected:
 	void OnClickedClose();
 
 	UFUNCTION()
-	void OnClickedBuy();
-
-	UFUNCTION()
-	void OnClickedCancelSelection();
-
-	UFUNCTION()
 	void HandleMoneyChanged(int32 NewMoneyAmount);
 
-	void RebuildShopList();
 	void RefreshMoneyText();
-	void ShowSelectedPanel(bool bShow);
 
-protected:
+	// Item IDs to display in this shop (set in Blueprint defaults)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
 	TArray<FName> ShopItemIDs;
 
@@ -58,42 +64,20 @@ protected:
 	UButton* CloseButton;
 
 	UPROPERTY(meta = (BindWidgetOptional))
-	UButton* BuyButton;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UButton* CancelSelectionButton;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UWrapBox* ItemListWrapBox;
+	UPanelWidget* ItemListWrapBox;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	UTextBlock* MoneyText;
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	UTextBlock* SelectedItemNameText;
+	UPROPERTY(meta = (BindWidget))
+	class UButton* InlineBuyButton;
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	UTextBlock* SelectedItemDescriptionText;
+	UPROPERTY(meta = (BindWidget))
+	class UButton* InlineCancelButton;
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	UTextBlock* SelectedItemPriceText;
+	UFUNCTION()
+	void OnClickedInlineBuy();
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	UImage* SelectedItemImage;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UTextBlock* BuyButtonText;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UWidget* SelectedDetailBox;
-
-private:
-	UPROPERTY()
-	UInventoryComponent* CachedInventory = nullptr;
-
-	UPROPERTY()
-	UEconomyComponent* CachedEconomy = nullptr;
-
-	FName SelectedItemID = NAME_None;
-	int32 SelectedPrice = 0;
+	UFUNCTION()
+	void OnClickedInlineCancel();
 };

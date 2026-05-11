@@ -8,17 +8,18 @@ void UShopModeSelectWidget::NativeConstruct()
 
 	if (BuyButton)
 	{
-		BuyButton->OnClicked.AddDynamic(this, &UShopModeSelectWidget::OnClickedBuy);
+		// AddDynamic -> AddUniqueDynamic 으로 변경
+		BuyButton->OnClicked.AddUniqueDynamic(this, &UShopModeSelectWidget::OnClickedBuy);
 	}
 
 	if (SellButton)
 	{
-		SellButton->OnClicked.AddDynamic(this, &UShopModeSelectWidget::OnClickedSell);
+		SellButton->OnClicked.AddUniqueDynamic(this, &UShopModeSelectWidget::OnClickedSell);
 	}
 
 	if (CloseButton)
 	{
-		CloseButton->OnClicked.AddDynamic(this, &UShopModeSelectWidget::OnClickedClose);
+		CloseButton->OnClicked.AddUniqueDynamic(this, &UShopModeSelectWidget::OnClickedClose);
 	}
 }
 

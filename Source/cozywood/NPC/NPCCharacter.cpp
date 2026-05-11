@@ -19,6 +19,6 @@ void ANPCCharacter::OnNPCClicked(AActor* TouchedActor, FKey ButtonPressed)
 
     if (AC1PlayerController* PC = Cast<AC1PlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
     {
-        PC->OpenNPCChat(NPCId);
+        // PC->OpenNPCChat(NPCId);
     }
 }

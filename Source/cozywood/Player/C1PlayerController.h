@@ -1,17 +1,17 @@
-#pragma once
+Ôªø#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "C1PlayerController.generated.h"
 
-class UNPCChatWidget;
-class ALLMManager;
 class UInputMappingContext;
 class UShopDialogueWidget;
 class UShopModeSelectWidget;
 class UShopBuyWidget;
 class UShopSellWidget;
+class UShopWidget;
 class UUserWidget;
+class UItemBase;
 
 UCLASS()
 class COZYWOOD_API AC1PlayerController : public APlayerController
@@ -20,20 +20,9 @@ class COZYWOOD_API AC1PlayerController : public APlayerController
 
 public:
     virtual void BeginPlay() override;
+    virtual void SetupInputComponent() override;
 
-    UFUNCTION(BlueprintCallable, Category = "NPC Chat")
-    void OpenNPCChat(const FString& NpcId);
-
-    UFUNCTION(BlueprintCallable, Category = "NPC Chat")
-    void SendCurrentChatMessage();
-
-    UFUNCTION(BlueprintCallable, Category = "NPC Chat")
-    void CloseNPCChat();
-
-    UFUNCTION(BlueprintCallable, Category = "NPC Chat")
-    bool IsChatOpen() const { return NPCChatWidgetInstance != nullptr; }
-
-    UFUNCTION(BlueprintCallable, Category = "Shop") //√ﬂ∞°
+    UFUNCTION(BlueprintCallable, Category = "Shop")
 	void OpenShopModeSelect();
 
 	UFUNCTION(BlueprintCallable, Category = "Shop")
@@ -46,59 +35,49 @@ public:
 	void CloseShopUI();
 
 	UFUNCTION(BlueprintCallable, Category = "Shop")
-	bool IsShopOpen() const; //√ﬂ∞°
+	bool IsShopOpen() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Shop")
+	bool BuyItem(FName ItemID, int32 Price, int32 Quantity = 1);
+
+	UFUNCTION(BlueprintCallable, Category = "Shop")
+	bool SellItem(UItemBase* ItemToSell, int32 SellPrice, int32 Quantity = 1);
 
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
     TObjectPtr<UInputMappingContext> DefaultMappingContext;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Chat")
-    TSubclassOf<UNPCChatWidget> NPCChatWidgetClass;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NPC Chat")
-    TSubclassOf<ALLMManager> LLMManagerClass;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    TSubclassOf<UShopDialogueWidget> ShopDialogueWidgetClass;
+    TSubclassOf<UShopModeSelectWidget> ShopModeSelectWidgetClass;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     TSubclassOf<UShopBuyWidget> ShopBuyWidgetClass;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    TSubclassOf<UShopSellWidget> ShopSellWidgetClass; //√ﬂ∞°
+    TSubclassOf<UShopSellWidget> ShopSellWidgetClass;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    TSubclassOf<UShopWidget> ShopWidgetClass;
 
 private:
     UPROPERTY()
-    TObjectPtr<UNPCChatWidget> NPCChatWidgetInstance;
-
-    UPROPERTY()
-    TObjectPtr<ALLMManager> LLMManagerInstance;
-
-    UPROPERTY()
-    TObjectPtr<UShopDialogueWidget> ShopDialogueWidgetInstance; //√ﬂ∞°
+    TObjectPtr<UShopModeSelectWidget> ShopModeSelectWidgetInstance;
 
     UPROPERTY()
     TObjectPtr<UShopBuyWidget> ShopBuyWidgetInstance;
 
     UPROPERTY()
-    TObjectPtr<UShopSellWidget> ShopSellWidgetInstance; //√ﬂ∞°
+    TObjectPtr<UShopSellWidget> ShopSellWidgetInstance;
 
     void ApplyShopInputMode(UUserWidget* FocusWidget);
     void RestoreGameInputMode();
-
-    // µ®∏Æ∞‘¿Ã∆ÆøÕ «¸Ωƒ¿ª ∏¬√· «⁄µÈ∑Ø «‘ºˆµÈ
-    UFUNCTION()
-    void HandleChatResponse(const FString& InReply, float ResponseTimeSeconds);
-
-    UFUNCTION()
-    void HandleGreetingResponse(const FString& InGreeting, float ResponseTimeSeconds);
-
-    UFUNCTION()
-    void HandleServerHealthChecked(bool bIsConnected);
-
-    void RequestServerHealthCheck();
-    void UpdateClockText();
+    void HandleEscapeKey();
 
     FTimerHandle HealthCheckTimerHandle;
     FTimerHandle TimeUpdateTimerHandle;
+
+    // CloseShopUI ÏßÅÌõÑ EÌÇ§Î°ú Ï¶âÏãú Ïû¨Ïò§ÌîàÎêòÎäî Í≤ÉÏùÑ ÎßâÍ∏∞ ÏúÑÌïú ÌÉÄÏûÑÏä§ÌÉ¨ÌîÑ
+    float ShopLastCloseTime = -1.0f;
 };
+

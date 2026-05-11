@@ -73,3 +73,13 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+
+# 모든 언리얼 바이너리 에셋 제외 (클로드는 어차피 이걸 못 읽습니다)
+*.uasset
+*.umap
+*.upk
+*.udk
+
+# 기타 대용량 에셋 폴더가 있다면 추가
+Content/

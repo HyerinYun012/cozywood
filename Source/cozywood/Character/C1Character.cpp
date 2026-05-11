@@ -11,8 +11,8 @@
 #include "../Components/InteractionComponent.h" 
 #include "../Components/GardenHousingComponent.h"
 #include "GameFramework/Actor.h"
+#include "Blueprint/UserWidget.h"
 #include "Engine/OverlapResult.h"
-#include "../Network/NetworkComponent.h"
 #include "Engine/World.h"
 #include "../Components/EconomyComponent.h"
 #include "../Items/ItemBase.h"
@@ -58,13 +58,11 @@ AC1Character::AC1Character()
 	SpringArmComp->bDoCollisionTest = false;
 
 	PlayerInventory = CreateDefaultSubobject<UInventoryComponent>(TEXT("PlayerInventory"));
-	PlayerInventory->SetSlotsCapacity(20);
+	PlayerInventory->SetSlotsCapacity(50);
 
 	CameraComp->SetupAttachment(SpringArmComp);
 
 	EconomyComp = CreateDefaultSubobject<UEconomyComponent>(TEXT("EconomyComp"));
-
-	NetworkComp = CreateDefaultSubobject<UNetworkComponent>(TEXT("NetworkComp"));
 
 	EquippedToolMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EquippedToolMeshComp"));
 	EquippedToolMeshComp->SetupAttachment(CameraComp);
@@ -121,7 +119,7 @@ void AC1Character::EnterGardenMode()
 
 	if (CurrentLevelName.ToLower() != TEXT("main"))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("차단: 정원 모드는 main 레벨에서만 켤 수 있습니다!"));
+		UE_LOG(LogTemp, Warning, TEXT("차단: 정원 모드는 main 레벨에서만 켤 수 있습니다"));
 
 		ShowLocationWarningUI();
 
@@ -178,29 +176,46 @@ void AC1Character::ExitGardenMode()
 
 void AC1Character::HandlePickup(const FInputActionValue& Value)
 {
-	// 1. 정원 모드이면서 물뿌리개를 들고 있는 경우
+	UE_LOG(LogTemp, Warning, TEXT("[HandlePickup] CALLED"));
+
+	// 1. 상점/채팅 UI가 열려 있으면 즉시 차단
+	AC1PlayerController* PC = Cast<AC1PlayerController>(GetController());
+	// if (PC && (PC->IsChatOpen() || PC->IsShopOpen())) return; 블루프린트로 대화시스템 구현
+
+	// ==========================================
+	// 2. 정원 모드 + 물뿌리개 사용 로직 수정
+	// ==========================================
 	if (bIsGardenMode && CurrentEquippedToolType == EItemToolType::EITT_WateringCan)
 	{
-		PlayWateringEffect(); // 물 뿌리기 연출
+		// 1) 대상 유무와 상관없이 물뿌리는 파티클+애니메이션 무조건 실행
+		PlayWateringEffect();
 
-		// 1. 현재 노란 외곽선을 띄우고 있는 아이템 정보를 가져옴
-		AActor* Focused = InteractionComp->GetFocusedActor();
-
+		// 2) 바라보고 있는 대상이 자라는 중인 식물이라면 물을 줌
+		AActor* Focused = InteractionComp ? InteractionComp->GetFocusedActor() : nullptr;
 		if (Focused && Focused->ActorHasTag(FName("Plant")))
 		{
 			APlantBase* Plant = Cast<APlantBase>(Focused);
-			if (Plant && Plant->CurrentState == EPlantState::Growing)
+			if (Plant)
 			{
-				Plant->ReceiveWater(); // 식물에게 물 주기 전달
-				return;
+				Plant->ReceiveWater();
 			}
 		}
+		// 물뿌리개를 사용했으므로 다른 상호작용은 무시하고 종료
+		return;
 	}
-	// 2. 정원 모드가 아니거나, 도구를 들고 있지 않은 경우 (기존 E키 로직)
-	if (InteractionComp)
+
+	if (!InteractionComp) return;
+
+	// 3. ShopNPC 태그를 가진 액터 → 상점 즉시 열기
+	AActor* Focused = InteractionComp->GetFocusedActor();
+	if (IsValid(Focused) && Focused->ActorHasTag(FName("ShopNPC")))
 	{
-		InteractionComp->BeginInteract();
+		if (PC) PC->OpenShopModeSelect();
+		return;
 	}
+
+	// 4. 일반 상호작용
+	InteractionComp->BeginInteract();
 }
 
 void AC1Character::ConfirmPlacement()
@@ -208,19 +223,15 @@ void AC1Character::ConfirmPlacement()
 	// 채팅창이 떠 있다면 캐릭터의 좌클릭 로직은 무시
 	if (AC1PlayerController* PC = Cast<AC1PlayerController>(GetController()))
 	{
-		if (PC->IsChatOpen() || PC->IsShopOpen())
-		{
-			UE_LOG(LogTemp, Log, TEXT("UI가 열려 있으므로 캐릭터 클릭 로직을 무시합니다."));
-			return;
-		}
+		// 블루프린트로 대화시스템 구현 예정
 	}
 
 	if (GardenHousingComp && GardenHousingComp->IsPlacing())
 	{
-		GardenHousingComp->ConfirmPlacement(); // 기존대로 가구 확정
+		GardenHousingComp->ConfirmPlacement();
 	}
 	// 2. 가구 배치 중이 아니라면? (평상시 상태)
-	else //추가
+	else 
 	{
 		if (TryOpenShopFromFocusedActor())
 		{
@@ -228,7 +239,7 @@ void AC1Character::ConfirmPlacement()
 		}
 
 		OnNormalLeftClick();
-	} //추가
+	}
 }
 
 void AC1Character::RotateHologram()
@@ -272,7 +283,7 @@ void AC1Character::UseItemFromInventory(UItemBase* ItemToUse)
 
 	case EItemCategory::Seed:
 		UE_LOG(LogTemp, Log, TEXT("심기 모드 시작"));
-		// StartPlanting(ItemToUse); 심기 모드 함수 실행으로 전달할 예정(재배 모드 구현 중)
+		StartPlanting(ItemToUse);
 		break;
 
 	case EItemCategory::Tool:
@@ -346,7 +357,7 @@ void AC1Character::UnequipTool()
 		EquippedToolMeshComp->SetStaticMesh(nullptr); // 메쉬 비우기
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("도구 장착 해제 완료!"));
+	UE_LOG(LogTemp, Warning, TEXT("도구 장착 해제 완료"));
 }
 
 void AC1Character::StartPlanting(UItemBase* SeedItem)
@@ -388,7 +399,7 @@ void AC1Character::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 		if (EnterGardenAction) {
-			EnhancedInputComponent->BindAction(EnterGardenAction, ETriggerEvent::Started, this, &AC1Character::EnterGardenMode);
+			EnhancedInputComponent->BindAction(EnterGardenAction, ETriggerEvent::Started, this, &AC1Character::ToggleGardenMode);
 		}
 		if (RotateHologramAction) {
 			EnhancedInputComponent->BindAction(RotateHologramAction, ETriggerEvent::Started, this, &AC1Character::RotateHologram);
@@ -398,9 +409,6 @@ void AC1Character::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		}
 		if (LeftClickAction) {
 			EnhancedInputComponent->BindAction(LeftClickAction, ETriggerEvent::Started, this, &AC1Character::ConfirmPlacement);
-		}
-		if (ExitGardenAction) {
-			EnhancedInputComponent->BindAction(ExitGardenAction, ETriggerEvent::Started, this, &AC1Character::ExitGardenMode);
 		}
 		if (MoveAction) {
 			EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AC1Character::Move);
@@ -417,6 +425,9 @@ void AC1Character::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (RecordEmotionAction) {
 			EnhancedInputComponent->BindAction(RecordEmotionAction, ETriggerEvent::Started, this, &AC1Character::TryOpenEmotionRecord);
 		}
+		if (OpenMenuAction) {
+			EnhancedInputComponent->BindAction(OpenMenuAction, ETriggerEvent::Started, this, &AC1Character::TriggerSystemMenu);
+		}
 		// InteractAction이 에디터에서 잘 할당되어 있다면 바인딩
 		
 	}
@@ -424,6 +435,9 @@ void AC1Character::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 void AC1Character::Move(const FInputActionValue& Value)
 {
+	// if (AC1PlayerController* PC = Cast<AC1PlayerController>(GetController()))
+		// if (PC->IsShopOpen() || PC->IsChatOpen()) return;
+
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
 	if (Controller != nullptr)
@@ -441,6 +455,9 @@ void AC1Character::Move(const FInputActionValue& Value)
 
 void AC1Character::Look(const FInputActionValue& Value)
 {
+	// if (AC1PlayerController* PC = Cast<AC1PlayerController>(GetController()))
+		// if (PC->IsShopOpen() || PC->IsChatOpen()) return;
+
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
 	if (Controller != nullptr)
@@ -452,22 +469,18 @@ void AC1Character::Look(const FInputActionValue& Value)
 
 bool AC1Character::TryOpenShopFromFocusedActor()
 {
-	if (!FocusedActor)
-	{
-		return false;
-	}
+	if (!InteractionComp) return false;
 
-	if (!FocusedActor->ActorHasTag(FName("ShopNPC")))
-	{
-		return false;
-	}
+	AActor* Focused = InteractionComp->GetFocusedActor();
+	if (!IsValid(Focused)) return false;
+
+	if (!Focused->ActorHasTag(FName("ShopNPC"))) return false;
 
 	if (AC1PlayerController* PC = Cast<AC1PlayerController>(GetController()))
 	{
 		PC->OpenShopModeSelect();
 		return true;
 	}
-
 	return false;
 }
 
@@ -478,4 +491,47 @@ void AC1Character::TryOpenEmotionRecord()
 		ShowGardenResultUI();
 		HideGardenRecordPrompt();
 	}
+}
+
+void AC1Character::ShowPlantOverlapErrorUI()
+{
+	// 1. 에러 팝업 위젯 클래스가 블루프린트에서 잘 지정되어 있는지 확인
+	if (PlantOverlapErrorWidgetClass)
+	{
+		// 2. 위젯 생성
+		UUserWidget* ErrorWidget = CreateWidget<UUserWidget>(GetWorld(), PlantOverlapErrorWidgetClass);
+
+		if (ErrorWidget)
+		{
+			// 3. 화면에 띄우기
+			ErrorWidget->AddToViewport(100);
+		}
+	}
+	else
+	{
+		// 클래스가 지정 안 되어 있으면 로그 띄우기
+		UE_LOG(LogTemp, Warning, TEXT("식물 겹침 에러 위젯 클래스가 세팅되지 않았음 캐릭터 블루프린트를 확인"));
+	}
+}
+
+void AC1Character::ToggleGardenMode()
+{
+	if (bIsGardenMode)
+	{
+		// 이미 정원 모드라면? -> 끄기
+		ExitGardenMode();
+	}
+	else
+	{
+		// 정원 모드가 아니라면? -> 켜기
+		EnterGardenMode();
+	}
+}
+
+void AC1Character::TriggerSystemMenu()
+{
+	UE_LOG(LogTemp, Log, TEXT("ESC 키 눌림 시스템 메뉴를 엽니다."));
+
+	// 블루프린트에 만들어둘 OnOpenSystemMenu 이벤트를 호출 (실행)
+	OnOpenSystemMenu();
 }

@@ -21,9 +21,21 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Farming")
 	void NotifyDayPassed();
+
+	void SavePlants();
+
+	UPROPERTY(EditAnywhere, Category = "Farming")
+	TSubclassOf<class APlantBase> PlantActorClass;
+
+	UPROPERTY()
+	int32 LastTrackedDay = -1;
+
 protected:
 	UPROPERTY()
 	AC1Character* OwnerCharacter;
 
 	virtual void BeginPlay() override;
+
+private:
+	void LoadPlants();
 };

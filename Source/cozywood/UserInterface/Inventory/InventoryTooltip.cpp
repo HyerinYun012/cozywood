@@ -59,3 +59,4 @@ void UInventoryTooltip::NativeConstruct()
 			break;
 		default: break;
 	}
+}

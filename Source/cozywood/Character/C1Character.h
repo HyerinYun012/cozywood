@@ -62,9 +62,6 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Character | Inventory")
 	UInventoryComponent* PlayerInventory;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	class UNetworkComponent* NetworkComp;
-
 	// ==========================================
 	// 카메라 & 기본 세팅
 	// ==========================================
@@ -111,7 +108,7 @@ public:
 	UInputAction* ExitGardenAction; // ESC키
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-	UInputAction* RecordEmotionAction; // 감정 기록용 입력 (예: F키)
+	UInputAction* RecordEmotionAction; // 감정 기록용 입력
 
 	// ==========================================
 	// 입력 처리용 껍데기 함수들 (구현부에서 컴포넌트 호출)
@@ -138,18 +135,15 @@ protected:
 	void OnTryRecordEmotion();
 	void TryOpenEmotionRecord();
 
-	// 나중에 만들 재배 관련 뼈대
-	// void StartPlanting(TSubclassOf<AActor> PlantClass, UStaticMesh* PlantMesh);
-
-	// 1. 실제 도구 모델링 컴포넌트 (카메라에 달려있음)
+	// 1. 실제 도구 모델링 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equip")
 	class UStaticMeshComponent* EquippedToolMeshComp;
 
-	// 2. 전담 컴포넌트 (파일 분리한 것)
+	// 2. 도구 시스템 컴포넌트 (파일 분리한 것)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equip")
 	class UToolManagerComponent* ToolManagerComp;
 
-	// 재무 부서 컴포넌트
+	// 경제시스템 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class UEconomyComponent* EconomyComp;
 
@@ -168,11 +162,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tool")
 	EItemToolType CurrentEquippedToolType = EItemToolType::EITT_None;
 
+	UFUNCTION(BlueprintCallable, Category = "Garden UI")
+	void ShowPlantOverlapErrorUI();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<class UUserWidget> PlantOverlapErrorWidgetClass;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Mode")
 	bool bIsGardenMode = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
-	AActor* FocusedActor;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
 	bool bCanOpen;
@@ -197,7 +194,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory|Action")
 	void EquipTool(class UItemBase* ToolItem);
 
-	// UI에서 씨앗/묘목 심기 시 호출 (매개변수를 UItemBase 통째로 받도록 변경)
+	// UI에서 씨앗/묘목 심기 시 호출 
 	UFUNCTION(BlueprintCallable, Category = "Inventory|Action")
 	void StartPlanting(class UItemBase* SeedItem);
 
@@ -214,6 +211,21 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Tool|Animation")
 	void PlayWateringEffect();
 
+	void ToggleGardenMode();
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
 	void ShowLocationWarningUI();
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Time")
+	int32 GetCurrentInGameDay() const;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* OpenMenuAction;
+
+	// 2. ESC를 눌렀을 때 C++에서 실행될 바인딩 함수
+	void TriggerSystemMenu();
+
+	// 3. 블루프린트에서 UI를 띄울 수 있도록 넘겨주는 이벤트 노드
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
+	void OnOpenSystemMenu();
 };

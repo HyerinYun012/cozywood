@@ -1,11 +1,8 @@
-﻿#include "ShopSellWidget.h"
-#include "ShopItemSlotWidget.h"
+#include "ShopSellWidget.h"
+#include "ShopSellItemSlotWidget.h"
 #include "Components/Button.h"
-#include "Components/WrapBox.h"
+#include "Components/PanelWidget.h"
 #include "Components/TextBlock.h"
-#include "Components/Image.h"
-#include "Components/Widget.h"
-#include "Engine/Texture2D.h"
 #include "../../Player/C1PlayerController.h"
 #include "../../Character/C1Character.h"
 #include "../../Components/InventoryComponent.h"
@@ -19,24 +16,11 @@ void UShopSellWidget::NativeConstruct()
 	Super::NativeConstruct();
 
 	if (BackButton)
-	{
 		BackButton->OnClicked.AddDynamic(this, &UShopSellWidget::OnClickedBack);
-	}
-
 	if (CloseButton)
-	{
 		CloseButton->OnClicked.AddDynamic(this, &UShopSellWidget::OnClickedClose);
-	}
-
-	if (SellButton)
-	{
-		SellButton->OnClicked.AddDynamic(this, &UShopSellWidget::OnClickedSell);
-	}
-
-	if (CancelSelectionButton)
-	{
-		CancelSelectionButton->OnClicked.AddDynamic(this, &UShopSellWidget::OnClickedCancelSelection);
-	}
+	if (DeselectZoneButton)
+		DeselectZoneButton->OnClicked.AddDynamic(this, &UShopSellWidget::OnClickedDeselectZone);
 
 	if (AC1Character* Character = Cast<AC1Character>(GetOwningPlayerPawn()))
 	{
@@ -44,60 +28,36 @@ void UShopSellWidget::NativeConstruct()
 		CachedEconomy = Character->GetEconomyComp();
 
 		if (CachedEconomy)
-		{
 			CachedEconomy->OnMoneyChanged.AddDynamic(this, &UShopSellWidget::HandleMoneyChanged);
-		}
-
 		if (CachedInventory)
-		{
 			CachedInventory->OnInventoryUpdated.AddUObject(this, &UShopSellWidget::RebuildSellList);
-		}
 	}
 
-	ShowSelectedPanel(false);
 	RefreshMoneyText();
 	RebuildSellList();
+}
+
+FReply UShopSellWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	DeselectCurrentSlot();
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
 void UShopSellWidget::OnClickedBack()
 {
 	if (AC1PlayerController* PC = Cast<AC1PlayerController>(GetOwningPlayer()))
-	{
 		PC->OpenShopModeSelect();
-	}
 }
 
 void UShopSellWidget::OnClickedClose()
 {
 	if (AC1PlayerController* PC = Cast<AC1PlayerController>(GetOwningPlayer()))
-	{
 		PC->CloseShopUI();
-	}
 }
 
-void UShopSellWidget::OnClickedSell()
+void UShopSellWidget::OnClickedDeselectZone()
 {
-	if (!CachedInventory || !CachedEconomy || !SelectedInventoryItem)
-	{
-		return;
-	}
-
-	SelectedInventoryItem->SetQuantity(SelectedInventoryItem->Quantity - 1);
-	CachedEconomy->AddMoney(SelectedPrice);
-
-	SelectedInventoryItem = nullptr;
-	SelectedPrice = 0;
-	ShowSelectedPanel(false);
-
-	RefreshMoneyText();
-	RebuildSellList();
-}
-
-void UShopSellWidget::OnClickedCancelSelection()
-{
-	SelectedInventoryItem = nullptr;
-	SelectedPrice = 0;
-	ShowSelectedPanel(false);
+	DeselectCurrentSlot();
 }
 
 void UShopSellWidget::HandleMoneyChanged(int32 NewMoneyAmount)
@@ -108,95 +68,96 @@ void UShopSellWidget::HandleMoneyChanged(int32 NewMoneyAmount)
 void UShopSellWidget::RefreshMoneyText()
 {
 	if (MoneyText && CachedEconomy)
-	{
 		MoneyText->SetText(FText::AsNumber(CachedEconomy->GetCurrentMoney()));
+}
+
+void UShopSellWidget::OnSlotSelected(UShopSellItemSlotWidget* SelectedSlot)
+{
+	if (CurrentlySelectedSlot && CurrentlySelectedSlot != SelectedSlot)
+		CurrentlySelectedSlot->SetActionBoxVisible(false);
+
+	CurrentlySelectedSlot = SelectedSlot;
+}
+
+void UShopSellWidget::OnSlotDeselected()
+{
+	CurrentlySelectedSlot = nullptr;
+}
+
+void UShopSellWidget::DeselectCurrentSlot()
+{
+	if (CurrentlySelectedSlot)
+	{
+		CurrentlySelectedSlot->SetActionBoxVisible(false);
+		CurrentlySelectedSlot = nullptr;
 	}
 }
 
-void UShopSellWidget::ShowSelectedPanel(bool bShow)
+void UShopSellWidget::ExecuteSell(UItemBase* Item, int32 Price)
 {
-	if (SelectedDetailBox)
-	{
-		SelectedDetailBox->SetVisibility(bShow ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	}
-}
+	// CurrentlySelectedSlot = nullptr;
 
-void UShopSellWidget::SelectInventoryItem(UItemBase* InItem, const FText& InName, const FText& InDescription, int32 InPrice, UTexture2D* InIcon)
-{
-	SelectedInventoryItem = InItem;
-	SelectedPrice = InPrice;
-
-	if (SelectedItemNameText)
-	{
-		SelectedItemNameText->SetText(InName);
-	}
-
-	if (SelectedItemDescriptionText)
-	{
-		SelectedItemDescriptionText->SetText(InDescription);
-	}
-
-	if (SelectedItemPriceText)
-	{
-		SelectedItemPriceText->SetText(FText::AsNumber(InPrice));
-	}
-
-	if (SelectedItemImage && InIcon)
-	{
-		FSlateBrush Brush;
-		Brush.SetResourceObject(InIcon);
-		SelectedItemImage->SetBrush(Brush);
-	}
-
-	if (SellButtonText)
-	{
-		SellButtonText->SetText(FText::FromString(TEXT("판매")));
-	}
-
-	ShowSelectedPanel(true);
+	if (AC1PlayerController* PC = Cast<AC1PlayerController>(GetOwningPlayer()))
+		PC->SellItem(Item, Price, 1);
 }
 
 void UShopSellWidget::RebuildSellList()
 {
-	if (!CachedInventory || !CachedInventory->ItemDataTable || !ItemListWrapBox || !ShopItemSlotWidgetClass)
+	CurrentlySelectedSlot = nullptr;
+
+	if (!ItemListWrapBox)
 	{
+		UE_LOG(LogTemp, Error, TEXT("ShopSellWidget: ItemListWrapBox is null. Check BindWidget name in WBP_ShopSellWidget."));
+		return;
+	}
+	ItemListWrapBox->ClearChildren();
+
+	if (!CachedInventory)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ShopSellWidget: CachedInventory is null. GetOwningPlayerPawn() may have failed in NativeConstruct."));
 		return;
 	}
 
-	ItemListWrapBox->ClearChildren();
+	if (!ShopSellItemSlotWidgetClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ShopSellWidget: ShopSellItemSlotWidgetClass is not assigned. Set it in WBP_ShopSellWidget Details panel."));
+		return;
+	}
 
 	static const FString ContextString(TEXT("ShopSellData"));
+	const TArray<UItemBase*> Contents = CachedInventory->GetInventoryContents();
+	const int32 TotalSlots = 50;
 
-	const TArray<UItemBase*> InventoryItems = CachedInventory->GetInventoryContents();
+	UE_LOG(LogTemp, Log, TEXT("ShopSellWidget: Building %d slots, inventory has %d items."), TotalSlots, Contents.Num());
 
-	for (UItemBase* Item : InventoryItems)
+	for (int32 i = 0; i < TotalSlots; ++i)
 	{
-		if (!Item)
-		{
-			continue;
-		}
-
-		FItemData* RowData = CachedInventory->ItemDataTable->FindRow<FItemData>(Item->ItemID, ContextString);
-		if (!RowData)
-		{
-			continue;
-		}
-
-		UShopItemSlotWidget* NewSlot = CreateWidget<UShopItemSlotWidget>(this, ShopItemSlotWidgetClass);
+		TSubclassOf<UUserWidget> WClass = ShopSellItemSlotWidgetClass;
+		UShopSellItemSlotWidget* NewSlot = CreateWidget<UShopSellItemSlotWidget>(this, WClass);
 		if (!NewSlot)
 		{
-			continue;
+			UE_LOG(LogTemp, Error, TEXT("ShopSellWidget: CreateWidget returned null at slot %d. Check BindWidget names in WBP_ShopSellItemSlot match C++ variable names exactly."), i);
+			return;
 		}
 
-		NewSlot->InitSellSlot(
-			Item,
-			Item->TextData.Name,
-			Item->TextData.Description,
-			RowData->SellValue,
-			Item->VisualData.Icon,
-			this
-		);
+		if (Contents.IsValidIndex(i) && IsValid(Contents[i]))
+		{
+			UItemBase* Item = Contents[i];
+			int32 SellPrice = 0;
+			if (CachedInventory->ItemDataTable)
+			{
+				if (FItemData* RowData = CachedInventory->ItemDataTable->FindRow<FItemData>(Item->ItemID, ContextString))
+					SellPrice = RowData->SellValue;
+			}
+			NewSlot->InitSlot(Item, SellPrice, this);
+		}
+		else
+		{
+			NewSlot->InitSlot(nullptr, 0, this);
+		}
 
 		ItemListWrapBox->AddChild(NewSlot);
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("ShopSellWidget: RebuildSellList complete. WrapBox child count: %d"), ItemListWrapBox->GetChildrenCount());
 }

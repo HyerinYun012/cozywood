@@ -11,18 +11,17 @@ class COZYWOOD_API UEconomyComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:
-	UEconomyComponent();
-
-protected:
-	virtual void BeginPlay() override;
-
 private:
 	// 현재 소지금
 	UPROPERTY(EditAnywhere, Category = "Finance")
 	int32 CurrentMoney;
 
+protected:
+	virtual void BeginPlay() override;
+
 public:
+	UEconomyComponent();
+
 	UPROPERTY(BlueprintAssignable, Category = "Finance|Events")
 	FOnMoneyChanged OnMoneyChanged;
 
@@ -30,11 +29,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Finance")
 	void AddMoney(int32 Amount);
 
-	// 출금 (돈이 부족하면 false 반환)
+	// 출금
 	UFUNCTION(BlueprintCallable, Category = "Finance")
 	bool SpendMoney(int32 Amount);
 
 	// 현재 잔액 확인
 	UFUNCTION(BlueprintPure, Category = "Finance")
 	int32 GetCurrentMoney() const { return CurrentMoney; }
+
+	UFUNCTION(BlueprintCallable, Category = "Economy")
+	void SaveMoney();
+
+	UFUNCTION(BlueprintCallable, Category = "Economy")
+	void LoadMoney();
 };

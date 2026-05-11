@@ -40,7 +40,7 @@ void UInventoryPanel::RefreshInventory()
         auto Contents = InventoryReference->GetInventoryContents();
         int32 Capacity = InventoryReference->GetSlotsCapacity();
 
-        // 2. '최대 칸 수(50번)'만큼 무조건 반복
+        // 2. 최대 칸 수(50번)만큼 무조건 반복
         for (int32 Index = 0; Index < Capacity; ++Index) {
 
             UInventoryItemSlot* ItemSlot = CreateWidget<UInventoryItemSlot>(this, InventorySlotClass);

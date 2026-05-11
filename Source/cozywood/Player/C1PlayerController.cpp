@@ -1,168 +1,43 @@
-﻿#include "C1PlayerController.h"
-#include "../NPC/NPCChatWidget.h"
+#include "C1PlayerController.h"
 #include "Framework/Application/SlateApplication.h"
-#include "../NPC/ServerInterface/LLMManager.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
-#include "../UserInterface/Shop/ShopDialogueWidget.h"
+#include "../UserInterface/Shop/ShopModeSelectWidget.h"
 #include "../UserInterface/Shop/ShopBuyWidget.h"
 #include "../UserInterface/Shop/ShopSellWidget.h"
+#include "../Character/C1Character.h"
+#include "../Components/InventoryComponent.h"
+#include "../Components/EconomyComponent.h"
+#include "../Items/ItemBase.h"
+
+void AC1PlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &AC1PlayerController::HandleEscapeKey);
+}
+
+void AC1PlayerController::HandleEscapeKey()
+{
+	if (IsShopOpen()) { CloseShopUI(); return; }
+}
 
 void AC1PlayerController::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
-    bShowMouseCursor = false;
-    bEnableClickEvents = false;
-    bEnableMouseOverEvents = false;
+	bShowMouseCursor = false;
+	bEnableClickEvents = false;
+	bEnableMouseOverEvents = false;
 
-    // 1. LLMManager 인스턴스 생성 또는 스폰
-    if (LLMManagerClass)
-    {
-        LLMManagerInstance = GetWorld()->SpawnActor<ALLMManager>(LLMManagerClass);
-    }
-
-    // 2. 델리게이트 바인딩 (LLM -> PC)
-    if (LLMManagerInstance)
-    {
-        LLMManagerInstance->OnChatResponse.AddDynamic(this, &AC1PlayerController::HandleChatResponse);
-        LLMManagerInstance->OnGreetingResponse.AddDynamic(this, &AC1PlayerController::HandleGreetingResponse);
-        LLMManagerInstance->OnServerHealthChecked.AddDynamic(this, &AC1PlayerController::HandleServerHealthChecked);
-    }
-
-    GetWorldTimerManager().SetTimer(TimeUpdateTimerHandle, this, &AC1PlayerController::UpdateClockText, 1.0f, true);
-    GetWorldTimerManager().SetTimer(HealthCheckTimerHandle, this, &AC1PlayerController::RequestServerHealthCheck, 3.0f, true);
 }
 
-void AC1PlayerController::OpenNPCChat(const FString& NpcId)
-{
-    if (!NPCChatWidgetInstance && NPCChatWidgetClass)
-    {
-        NPCChatWidgetInstance = CreateWidget<UNPCChatWidget>(this, NPCChatWidgetClass);
-    }
-
-    if (NPCChatWidgetInstance)
-    {
-
-        NPCChatWidgetInstance->SetNpcId(NpcId);
-
-        if (!NPCChatWidgetInstance->IsInViewport())
-        {
-            NPCChatWidgetInstance->AddToViewport(10);
-
-            if (LLMManagerInstance) { LLMManagerInstance->RequestGreeting(NpcId, TEXT("player1")); }
-
-            FInputModeGameAndUI InputMode;
-            TSharedPtr<SWidget> CachedWidget = NPCChatWidgetInstance->GetCachedWidget();
-            if (CachedWidget.IsValid()) { InputMode.SetWidgetToFocus(CachedWidget); }
-
-            InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-            InputMode.SetHideCursorDuringCapture(false);
-            SetInputMode(InputMode);
-
-            bShowMouseCursor = true;
-
-            SetIgnoreLookInput(true);
-            SetIgnoreMoveInput(true);
-        }
-    }
-}
-
-void AC1PlayerController::SendCurrentChatMessage()
-{
-    // 1. 위젯이 유효하고 인풋박스에 글자가 있는지 확인
-    if (NPCChatWidgetInstance)
-    {
-        FString UserMessage = NPCChatWidgetInstance->GetInputMessage();
-        if (UserMessage.IsEmpty()) return;
-
-        // 2. 내 채팅 로그에 먼저 표시
-        NPCChatWidgetInstance->AddMessageToChat(FString::Printf(TEXT("Player: %s"), *UserMessage));
-
-        // 3. 서버(LLMManager)에 전송
-        if (LLMManagerInstance)
-        {
-            FString NpcId = NPCChatWidgetInstance->GetNpcId();
-            LLMManagerInstance->SendChatMessage(NpcId, TEXT("player1"), UserMessage);
-        }
-
-        // 4. 입력창 비우기
-        NPCChatWidgetInstance->ClearInputMessage();
-    }
-}
-
-void AC1PlayerController::HandleChatResponse(const FString& InReply, float ResponseTimeSeconds)
-{
-    if (NPCChatWidgetInstance)
-    {
-        // 위젯의 통합 함수 호출 (메시지 추가 + 시간 표시 + 상태 갱신)
-        NPCChatWidgetInstance->AddChatMessage(TEXT("NPC: ") + InReply, ResponseTimeSeconds);
-    }
-}
-
-void AC1PlayerController::HandleGreetingResponse(const FString& InGreeting, float ResponseTimeSeconds)
-{
-    if (NPCChatWidgetInstance)
-    {
-        NPCChatWidgetInstance->AddChatMessage(TEXT("NPC: ") + InGreeting, ResponseTimeSeconds);
-    }
-}
-
-void AC1PlayerController::HandleServerHealthChecked(bool bIsConnected)
-{
-    if (NPCChatWidgetInstance)
-    {
-        NPCChatWidgetInstance->SetServerStatusText(bIsConnected ? TEXT("Online") : TEXT("Offline"));
-    }
-}
-
-void AC1PlayerController::RequestServerHealthCheck()
-{
-    if (LLMManagerInstance) LLMManagerInstance->CheckServerHealth();
-}
-
-void AC1PlayerController::UpdateClockText()
-{
-    if (NPCChatWidgetInstance)
-    {
-        NPCChatWidgetInstance->SetTimeText(FDateTime::Now().ToString(TEXT("%H:%M:%S")));
-    }
-}
-
-void AC1PlayerController::CloseNPCChat()
-{
-    // 1. 위젯 제거 및 정리
-    if (NPCChatWidgetInstance)
-    {
-        NPCChatWidgetInstance->RemoveFromParent();
-        NPCChatWidgetInstance = nullptr;
-    }
-
-    // 2. 모든 무시 설정 강제 해제
-    SetIgnoreLookInput(false);
-    SetIgnoreMoveInput(false);
-
-    // 3. 입력 모드를 Game Only로 초기화
-    FInputModeGameOnly InputMode;
-    // 이 옵션이 중요합니다: 마우스 클릭 시 즉시 뷰포트로 포커스를 가져옵니다.
-    InputMode.SetConsumeCaptureMouseDown(true);
-    SetInputMode(InputMode);
-
-    // 4. 커서 숨기기
-    bShowMouseCursor = false;
-    bEnableClickEvents = false;
-    bEnableMouseOverEvents = false;
-
-    // UI에 뺏겼던 마우스 제어권을 즉시 게임 엔진이 회수
-    FSlateApplication::Get().SetAllUserFocusToGameViewport();
-}
 
 bool AC1PlayerController::IsShopOpen() const
 {
-	return (ShopDialogueWidgetInstance && ShopDialogueWidgetInstance->IsInViewport())
-		|| (ShopBuyWidgetInstance && ShopBuyWidgetInstance->IsInViewport())
-		|| (ShopSellWidgetInstance && ShopSellWidgetInstance->IsInViewport());
+	return (ShopModeSelectWidgetInstance && ShopModeSelectWidgetInstance.Get()->IsInViewport())
+		|| (ShopBuyWidgetInstance        && ShopBuyWidgetInstance.Get()->IsInViewport())
+		|| (ShopSellWidgetInstance       && ShopSellWidgetInstance.Get()->IsInViewport());
 }
 
 void AC1PlayerController::ApplyShopInputMode(UUserWidget* FocusWidget)
@@ -181,16 +56,10 @@ void AC1PlayerController::ApplyShopInputMode(UUserWidget* FocusWidget)
 
 	SetInputMode(InputMode);
 	bShowMouseCursor = true;
-
-	SetIgnoreLookInput(true);
-	SetIgnoreMoveInput(true);
 }
 
 void AC1PlayerController::RestoreGameInputMode()
 {
-	SetIgnoreLookInput(false);
-	SetIgnoreMoveInput(false);
-
 	FInputModeGameOnly InputMode;
 	InputMode.SetConsumeCaptureMouseDown(true);
 	SetInputMode(InputMode);
@@ -204,115 +73,149 @@ void AC1PlayerController::RestoreGameInputMode()
 
 void AC1PlayerController::OpenShopModeSelect()
 {
-	if (IsChatOpen())
+
+	// C4244 fix: GetTimeSeconds()는 double 반환 → float으로 캐스트
+	float Elapsed = GetWorld() ? static_cast<float>(GetWorld()->GetTimeSeconds()) - ShopLastCloseTime : 999.f;
+	if (Elapsed < 0.3f) { UE_LOG(LogTemp, Warning, TEXT("[OpenShopModeSelect] blocked: cooldown %.2f"), Elapsed); return; }
+
+	UE_LOG(LogTemp, Warning, TEXT("[OpenShopModeSelect] WidgetClass=%s  WidgetInstance=%s"),
+		ShopModeSelectWidgetClass ? TEXT("valid") : TEXT("NULL"),
+		ShopModeSelectWidgetInstance ? TEXT("exists") : TEXT("NULL"));
+
+	if (!ShopModeSelectWidgetInstance && ShopModeSelectWidgetClass)
 	{
+		// C2672 fix: TSubclassOf<UShopModeSelectWidget> → TSubclassOf<UUserWidget> 명시적 변환
+		TSubclassOf<UUserWidget> WClass = ShopModeSelectWidgetClass;
+		ShopModeSelectWidgetInstance = CreateWidget<UShopModeSelectWidget>(this, WClass);
+	}
+
+	if (!ShopModeSelectWidgetInstance)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[OpenShopModeSelect] widget creation failed — ShopModeSelectWidgetClass not assigned in BP?"));
 		return;
 	}
 
-	if (!ShopDialogueWidgetInstance && ShopDialogueWidgetClass)
+	// C2039 fix: .Get() 사용
+	if (ShopBuyWidgetInstance)  ShopBuyWidgetInstance.Get()->RemoveFromParent();
+	if (ShopSellWidgetInstance && ShopSellWidgetInstance->IsInViewport()) ShopSellWidgetInstance.Get()->RemoveFromParent();
+
+	if (!ShopModeSelectWidgetInstance.Get()->IsInViewport())
 	{
-		ShopDialogueWidgetInstance = CreateWidget<UShopDialogueWidget>(this, ShopDialogueWidgetClass);
+		ShopModeSelectWidgetInstance.Get()->AddToViewport(20);
 	}
 
-	if (!ShopDialogueWidgetInstance)
-	{
-		return;
-	}
-
-	if (ShopBuyWidgetInstance)
-	{
-		ShopBuyWidgetInstance->RemoveFromParent();
-	}
-
-	if (ShopSellWidgetInstance)
-	{
-		ShopSellWidgetInstance->RemoveFromParent();
-	}
-
-	if (!ShopDialogueWidgetInstance->IsInViewport())
-	{
-		ShopDialogueWidgetInstance->AddToViewport(20);
-	}
-
-	ApplyShopInputMode(ShopDialogueWidgetInstance);
+	// C2664 fix: .Get()으로 UUserWidget* 변환
+	ApplyShopInputMode(ShopModeSelectWidgetInstance.Get());
 }
 
 void AC1PlayerController::OpenShopBuy()
 {
 	if (!ShopBuyWidgetInstance && ShopBuyWidgetClass)
 	{
-		ShopBuyWidgetInstance = CreateWidget<UShopBuyWidget>(this, ShopBuyWidgetClass);
+		TSubclassOf<UUserWidget> WClass = ShopBuyWidgetClass;
+		ShopBuyWidgetInstance = CreateWidget<UShopBuyWidget>(this, WClass);
 	}
 
 	if (!ShopBuyWidgetInstance)
 	{
+		UE_LOG(LogTemp, Error, TEXT("OpenShopBuy: ShopBuyWidgetClass가 Blueprint에 할당되지 않았습니다"));
+		RestoreGameInputMode();
 		return;
 	}
 
-	if (ShopDialogueWidgetInstance)
+	if (ShopModeSelectWidgetInstance) ShopModeSelectWidgetInstance.Get()->RemoveFromParent();
+	if (ShopSellWidgetInstance)       ShopSellWidgetInstance.Get()->RemoveFromParent();
+
+	if (!ShopBuyWidgetInstance.Get()->IsInViewport())
 	{
-		ShopDialogueWidgetInstance->RemoveFromParent();
+		ShopBuyWidgetInstance.Get()->AddToViewport(21);
 	}
 
-	if (ShopSellWidgetInstance)
-	{
-		ShopSellWidgetInstance->RemoveFromParent();
-	}
-
-	if (!ShopBuyWidgetInstance->IsInViewport())
-	{
-		ShopBuyWidgetInstance->AddToViewport(21);
-	}
-
-	ApplyShopInputMode(ShopBuyWidgetInstance);
+	ShopBuyWidgetInstance.Get()->RebuildShopList();
+	ApplyShopInputMode(ShopBuyWidgetInstance.Get());
 }
 
 void AC1PlayerController::OpenShopSell()
 {
-    if (!ShopSellWidgetInstance && ShopSellWidgetClass)
-    {
-        ShopSellWidgetInstance = CreateWidget<UShopSellWidget>(this, ShopSellWidgetClass);
-    }
+	if (!ShopSellWidgetInstance && ShopSellWidgetClass)
+	{
+		TSubclassOf<UUserWidget> WClass = ShopSellWidgetClass;
+		ShopSellWidgetInstance = CreateWidget<UShopSellWidget>(this, WClass);
+	}
 
-    if (!ShopSellWidgetInstance)
-    {
-        return;
-    }
+	if (!ShopSellWidgetInstance)
+	{
+		UE_LOG(LogTemp, Error, TEXT("OpenShopSell: ShopSellWidgetClass가 Blueprint에 할당되지 않았습니다"));
+		RestoreGameInputMode();
+		return;
+	}
 
-    if (ShopDialogueWidgetInstance)
-    {
-        ShopDialogueWidgetInstance->RemoveFromParent();
-    }
+	if (ShopModeSelectWidgetInstance) ShopModeSelectWidgetInstance.Get()->RemoveFromParent();
+	if (ShopBuyWidgetInstance)        ShopBuyWidgetInstance.Get()->RemoveFromParent();
 
-    if (ShopBuyWidgetInstance)
-    {
-        ShopBuyWidgetInstance->RemoveFromParent();
-    }
+	if (!ShopSellWidgetInstance.Get()->IsInViewport())
+	{
+		ShopSellWidgetInstance.Get()->AddToViewport(21);
+	}
 
-    if (!ShopSellWidgetInstance->IsInViewport())
-    {
-        ShopSellWidgetInstance->AddToViewport(21);
-    }
-
-    ApplyShopInputMode(ShopSellWidgetInstance);
+	ShopSellWidgetInstance.Get()->RebuildSellList();
+	ApplyShopInputMode(ShopSellWidgetInstance.Get());
 }
 
 void AC1PlayerController::CloseShopUI()
 {
-    if (ShopDialogueWidgetInstance)
-    {
-        ShopDialogueWidgetInstance->RemoveFromParent();
-    }
+	if (ShopModeSelectWidgetInstance)
+	{
+		ShopModeSelectWidgetInstance.Get()->RemoveFromParent();
+		ShopModeSelectWidgetInstance = nullptr;
+	}
+	if (ShopBuyWidgetInstance)
+	{
+		ShopBuyWidgetInstance.Get()->RemoveFromParent();
+		ShopBuyWidgetInstance = nullptr;
+	}
+	if (ShopSellWidgetInstance)
+	{
+		ShopSellWidgetInstance.Get()->RemoveFromParent();
+		ShopSellWidgetInstance = nullptr;
+	}
 
-    if (ShopBuyWidgetInstance)
-    {
-        ShopBuyWidgetInstance->RemoveFromParent();
-    }
+	RestoreGameInputMode();
+	ShopLastCloseTime = GetWorld() ? static_cast<float>(GetWorld()->GetTimeSeconds()) : -1.0f;
+}
 
-    if (ShopSellWidgetInstance)
-    {
-        ShopSellWidgetInstance->RemoveFromParent();
-    }
+bool AC1PlayerController::BuyItem(FName ItemID, int32 Price, int32 Quantity)
+{
+	if (ItemID.IsNone() || Quantity <= 0) return false;
 
-    RestoreGameInputMode();
+	AC1Character* OwnerChar = Cast<AC1Character>(GetPawn());
+	if (!OwnerChar) return false;
+
+	UEconomyComponent* Economy     = OwnerChar->GetEconomyComp();
+	UInventoryComponent* Inventory = OwnerChar->GetInventory();
+	if (!Economy || !Inventory) return false;
+
+	if (!Economy->SpendMoney(Price)) return false;
+
+	Inventory->AddStartingItemByID(ItemID, Quantity);
+	UE_LOG(LogTemp, Log, TEXT("구매 완료: %s x%d (-%d G)"), *ItemID.ToString(), Quantity, Price);
+	return true;
+}
+
+bool AC1PlayerController::SellItem(UItemBase* ItemToSell, int32 SellPrice, int32 Quantity)
+{
+	if (!ItemToSell || Quantity <= 0) return false;
+	if (ItemToSell->Quantity < Quantity) return false;
+
+	AC1Character* OwnerChar = Cast<AC1Character>(GetPawn());
+	if (!OwnerChar) return false;
+
+	UEconomyComponent* Economy     = OwnerChar->GetEconomyComp();
+	UInventoryComponent* Inventory = OwnerChar->GetInventory();
+	if (!Economy || !Inventory) return false;
+
+	Inventory->RemoveAmountOfItem(ItemToSell, Quantity);
+	Economy->AddMoney(SellPrice * Quantity);
+	UE_LOG(LogTemp, Log, TEXT("판매 완료: %s x%d (+%d G)"), *ItemToSell->ItemID.ToString(), Quantity, SellPrice * Quantity);
+	return true;
 }

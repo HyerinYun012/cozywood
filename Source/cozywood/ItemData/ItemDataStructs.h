@@ -80,6 +80,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
 	bool bIsStackable;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName HarvestResultID;
+
 	UPROPERTY(EditAnywhere, Category = "Item Data")
 	int32 MaxStackCount; // 고정값 (데이터 테이블에서 99, 1 등으로 입력)
 

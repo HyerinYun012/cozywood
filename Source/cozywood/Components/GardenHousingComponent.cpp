@@ -27,7 +27,7 @@ void UGardenHousingComponent::ResetPlacementCount()
 	PlacedFurnitureCount = 0;
 	bHasReceivedDecoReward = false;
 
-	UE_LOG(LogTemp, Log, TEXT("정원 모드 탈출: 배치 카운트가 0으로 리셋되었습니다."));
+	UE_LOG(LogTemp, Log, TEXT("정원 모드 탈출: 배치 카운트가 0으로 리셋됨"));
 }
 
 void UGardenHousingComponent::StartPlacement(TSubclassOf<AActor> InFurnitureClass, UStaticMesh* FurnitureMesh, class UItemBase* ItemToUse)
@@ -132,15 +132,17 @@ void UGardenHousingComponent::ConfirmPlacement()
 			DecoItem->SetFurnitureData(FurnitureMeshToSpawn, ItemBeingPlaced->ItemID);
 		}
 
-		// 인벤토리 컴포넌트에서 아이템 가구 하나 차감
 		AC1Character* OwnerCharacter = Cast<AC1Character>(GetOwner());
-		if (OwnerCharacter && OwnerCharacter->GetInventory())
+		if (OwnerCharacter && OwnerCharacter->GetInventory() && ItemBeingPlaced)
 		{
-			OwnerCharacter->GetInventory()->RemoveItemByActorClass(FurnitureClassToSpawn);
+			OwnerCharacter->GetInventory()->RemoveAmountOfItem(ItemBeingPlaced, 1);
+
+			// 배치를 완료했으니 기억해둔 아이템 변수 비워주기
+			ItemBeingPlaced = nullptr;
 		}
 
-		UE_LOG(LogTemp, Log, TEXT("가구 배치 성공 및 인벤토리 차감 완료!"));
-		
+		UE_LOG(LogTemp, Log, TEXT("가구 배치 성공 및 인벤토리 차감 완료"));
+
 		PlacedFurnitureCount++;
 		UE_LOG(LogTemp, Log, TEXT("현재 배치된 가구 수: %d / %d"), PlacedFurnitureCount, TargetDecoCount);
 
@@ -151,7 +153,7 @@ void UGardenHousingComponent::ConfirmPlacement()
 			if (OwnerCharacter)
 			{
 				OwnerCharacter->ShowGardenRecordPrompt();
-				UE_LOG(LogTemp, Warning, TEXT("10개 달성! [단축키]를 눌러 기록하세요."))
+				UE_LOG(LogTemp, Warning, TEXT("10개 달성 [단축키]를 눌러 기록"))
 			}
 		}
 		CancelPlacement();
@@ -190,6 +192,9 @@ void UGardenHousingComponent::CancelPlacement()
 	bIsValidPlacement = false;
 	bIsWheelRotationEnabled = false;
 	bCanPlace = false;
+
+	// 배치를 취소했으니 기억해둔 아이템 정보 비우기
+	ItemBeingPlaced = nullptr;
 }
 
 void UGardenHousingComponent::FinishNamingAndGiveReward()
@@ -206,12 +211,23 @@ void UGardenHousingComponent::FinishNamingAndGiveReward()
 	}
 }
 
-// 정원 배치 상태를 저장
+// 정원 배치 상태를 저장 (인벤토리 데이터는 보존하고 가구 데이터만 갱신)
 void UGardenHousingComponent::SaveGarden()
 {
-	UGardenSave* SaveGameInstance = Cast<UGardenSave>(UGameplayStatics::CreateSaveGameObject(UGardenSave::StaticClass()));
+	// 기존 저장 파일을 불러와서 인벤토리 데이터를 보존한 뒤 가구 데이터만 덮어씀
+	UGardenSave* SaveGameInstance = nullptr;
+	if (UGameplayStatics::DoesSaveGameExist(SaveSlotName, 0))
+	{
+		SaveGameInstance = Cast<UGardenSave>(UGameplayStatics::LoadGameFromSlot(SaveSlotName, 0));
+	}
+	if (!SaveGameInstance)
+	{
+		SaveGameInstance = Cast<UGardenSave>(UGameplayStatics::CreateSaveGameObject(UGardenSave::StaticClass()));
+	}
 
-	// 맵에 있는 모든 가구(ADecoFurniture)를 싹 다 찾는다. 
+	SaveGameInstance->SavedFurnitures.Empty();
+
+	// 맵에 있는 모든 가구(ADecoFurniture)를 싹 다 찾음
 	TArray<AActor*> FoundFurnitures;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AADecoFurniture::StaticClass(), FoundFurnitures);
 
@@ -222,26 +238,25 @@ void UGardenHousingComponent::SaveGarden()
 		if (Furniture)
 		{
 			FSavedFurnitureData Data;
-			Data.ItemID = Furniture->FurnitureItemID; // 아이템 ID
-			Data.FurnitureTransform = Furniture->GetActorTransform(); // 위치와 회전 값
+			Data.ItemID = Furniture->FurnitureItemID;
+			Data.FurnitureTransform = Furniture->GetActorTransform();
 			SaveGameInstance->SavedFurnitures.Add(Data);
 		}
 	}
 
-	// 위의 아이템 배치 상태들을 컴퓨터 하드디스크에 저장
 	UGameplayStatics::SaveGameToSlot(SaveGameInstance, SaveSlotName, 0);
-	UE_LOG(LogTemp, Warning, TEXT("정원 저장 완료! 총 %d개 가구 저장됨."), SaveGameInstance->SavedFurnitures.Num());
+	UE_LOG(LogTemp, Warning, TEXT("정원 저장 완료 총 %d개 가구 저장됨."), SaveGameInstance->SavedFurnitures.Num());
 }
 
 void UGardenHousingComponent::LoadGarden()
 {
-	// 하드디스크에 가구 상태 기록을 확인하고, 있으면 가져옵니다.
+	// 하드디스크에 가구 상태 기록을 확인 후 있으면 가져옴
 	if (UGameplayStatics::DoesSaveGameExist(SaveSlotName, 0))
 	{
 		UGardenSave* LoadGameInstance = Cast<UGardenSave>(UGameplayStatics::LoadGameFromSlot(SaveSlotName, 0));
 		if (LoadGameInstance && ItemDB)
 		{
-			// 혹시 기존에 남아있는 가구가 있다면 지움 (겹침 방지)
+			// 기존에 남아있는 가구가 있다면 지움 (겹침 방지)
 			TArray<AActor*> OldFurnitures;
 			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AADecoFurniture::StaticClass(), OldFurnitures);
 			for (AActor* OldActor : OldFurnitures)
@@ -252,7 +267,7 @@ void UGardenHousingComponent::LoadGarden()
 			// 기록을 보면서 하나씩 소환
 			for (const FSavedFurnitureData& SavedData : LoadGameInstance->SavedFurnitures)
 			{
-				// 이름표(ItemID)로 데이터 테이블에서 가구 정보를 찾습니다.
+				// 이름표(ItemID)로 데이터 테이블에서 가구 정보를 찾음
 				FItemData* ItemData = ItemDB->FindRow<FItemData>(SavedData.ItemID, TEXT("LoadFurniture"));
 
 				if (ItemData && ItemData->VisualData.ActorClass)
@@ -268,7 +283,7 @@ void UGardenHousingComponent::LoadGarden()
 					}
 				}
 			}
-			UE_LOG(LogTemp, Warning, TEXT("정원 불러오기 완료! 총 %d개 가구 배치됨."), LoadGameInstance->SavedFurnitures.Num());
+			UE_LOG(LogTemp, Warning, TEXT("정원 불러오기 완료 총 %d개 가구 배치됨."), LoadGameInstance->SavedFurnitures.Num());
 		}
 	}
 }

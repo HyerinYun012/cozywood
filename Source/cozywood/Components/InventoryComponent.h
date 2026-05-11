@@ -105,23 +105,22 @@ public:
 	UFUNCTION(Category = "Inventory")
 	FORCEINLINE void SetSlotsCapacity(const int32 NewSlotsCapacity) { InventorySlotsCapacity = NewSlotsCapacity; };
 
-	// Å¬·¡½º Á¤º¸¸¦ ±â¹İÀ¸·Î ÀÎº¥Åä¸®¿¡¼­ ¾ÆÀÌÅÛÀ» Ã£¾Æ 1°³ Á¦°Å
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void RemoveItemByActorClass(TSubclassOf<AActor> InClass);
 
-	// Å×½ºÆ®¿ë, ´õ¹Ì ¾ÆÀÌÅÛ ¹è¿­
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory|Test")
-	TArray<FName> DefaultStartingItems;
-
-	// ID¸¦ ¹Ş¾Æ¼­ ÁøÂ¥ ¾ÆÀÌÅÛ °´Ã¼(UItemBase)·Î ¿¬¼ºÇØ ÁÖ´Â Áß°£ ´Ù¸® ÇÔ¼ö
+	// IDë¥¼ ë°›ì•„ì„œ í•´ë‹¹ ì•„ì´í…œ ê°ì²´(UItemBase)ì„ ì¸ë²¤í† ë¦¬ì— ì¶”ê°€í•˜ëŠ” í•¨ìˆ˜ (ë¡œë“œ ë° í”½ì—… ì‹œ ì‚¬ìš©)
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void AddStartingItemByID(FName ItemID, int32 AmountToAdd = 1);
 
-	// °Ë»öÇÒ ¾ÆÀÌÅÛ µ¥ÀÌÅÍ Å×ÀÌºí
+	// ê²€ì‚¬í•˜ëŠ” ë°ì´í„° í…Œì´ë¸” ë¼ì´ë¸ŒëŸ¬ë¦¬
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory | Initialization")
 	class UDataTable* ItemDataTable;
 
 protected:
+	// ì €ì¥/ë¶ˆëŸ¬ì˜¤ê¸°ì— ì‚¬ìš©í•  ìŠ¬ë¡¯ ì´ë¦„ (GardenSaveì™€ ë™ì¼í•œ íŒŒì¼ ê³µìœ )
+	UPROPERTY(EditDefaultsOnly, Category = "Inventory|SaveLoad")
+	FString SaveSlotName = TEXT("GardenSaveSlot");
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
 	int32 InventorySlotsCapacity;
 
@@ -135,6 +134,11 @@ protected:
 	int32 CalculateNumberForFullStack(UItemBase* StackableItem, int32 InitialRequestedAddAmount);
 
 	void AddNewItem(UItemBase* Item, const int32 AmountToAdd);
+
+private:
+	void SaveInventory();
+	void LoadInventory();
+
 public:
 	UInventoryComponent(const FOnInventoryUpdated& OnInventoryUpdated, const int32& InventorySlotsCapacity, const TArray<TObjectPtr<UItemBase>>& InventoryContents)
 		: OnInventoryUpdated(OnInventoryUpdated), InventorySlotsCapacity(InventorySlotsCapacity), InventoryContents(InventoryContents) {};

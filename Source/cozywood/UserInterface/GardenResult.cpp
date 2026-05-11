@@ -3,7 +3,6 @@
 #include "Components/TextBlock.h"
 #include "Components/EditableTextBox.h"
 #include "Components/WidgetSwitcher.h"
-#include "../NPC/ServerInterface/LLMManager.h"
 
 void UGardenResultWidget::NativeConstruct()
 {
@@ -56,13 +55,6 @@ void UGardenResultWidget::SaveAndSendToServer()
 {
     FString GardenName = GardenNameInput->GetText().ToString();
 
-    // 서버 매니저(LLMManager)를 통해 전송
-    // (LLMManager에 SaveGardenResult 함수가 있다고 가정)
-    /*
-    if (LLMManager) {
-        LLMManager->SendGardenData(SelectedEmotions, GardenName);
-    }
-    */
 
     UE_LOG(LogTemp, Warning, TEXT("서버 전송 완료: %s 정원"), *GardenName);
     RemoveFromParent(); // 위젯 닫기

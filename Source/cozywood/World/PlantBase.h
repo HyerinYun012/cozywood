@@ -2,6 +2,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "../ItemData/ItemDataStructs.h"
+#include "../Interfaces/InteractionInterface.h"
 #include "PlantBase.generated.h"
 
 UENUM(BlueprintType)
@@ -12,20 +13,21 @@ enum class EPlantState : uint8 {
 };
 
 UCLASS()
-class COZYWOOD_API APlantBase : public AActor
+class COZYWOOD_API APlantBase : public AActor, public IInteractionInterface
 {
     GENERATED_BODY()
 
 public:
     APlantBase();
 
+    void RestorePlantState(int32 InGrowthDay, uint8 InState, bool bInWatered);
+
     // 1. 이 식물이 어떤 아이템 정보를 기반으로 하는지 저장
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant")
     FItemData ItemInfo;
 
-    // 2. 현재 성장 단계 (0: 씨앗, 1: 묘목, 2: 완료 등)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Plant")
-    int32 CurrentGrowthStage = 0;
+    int32 CurrentGrowthDay = 0;
 
     // 3. 물 주기 함수 (물뿌리개에서 호출)
     UFUNCTION(BlueprintCallable, Category = "Plant")
@@ -45,6 +47,14 @@ public:
 
 	void InitializePlant(FItemData InItemData); // 씨앗 심을 때 초기화하는 함수
 
+    virtual FInteractableData GetInteractableData() const override { return InstanceInteractableData; }
+
+    virtual void BeginFocus_Implementation() override;
+    virtual void EndFocus_Implementation() override;
+    virtual void Interact_Implementation(AC1Character* PlayerCharacter) override;
+
+    void CheckTimeTravelAndGrowth(int32 SavedDay, int32 CurrentDay);
+
 protected:
     virtual void BeginPlay() override;
 
@@ -52,5 +62,8 @@ protected:
     UStaticMeshComponent* PlantMeshComp;
 
     void UpdatePlantMesh(); // 단계별로 메쉬 바꾸는 함수
+
+    UPROPERTY(VisibleInstanceOnly, Category = "Plant | Interaction")
+    FInteractableData InstanceInteractableData;
 
 };

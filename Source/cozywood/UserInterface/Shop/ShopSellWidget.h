@@ -5,15 +5,12 @@
 #include "ShopSellWidget.generated.h"
 
 class UButton;
-class UWrapBox;
+class UPanelWidget;
 class UTextBlock;
-class UImage;
-class UTexture2D;
 class UItemBase;
-class UShopItemSlotWidget;
+class UShopSellItemSlotWidget;
 class UInventoryComponent;
 class UEconomyComponent;
-class UWidget;
 
 UCLASS()
 class COZYWOOD_API UShopSellWidget : public UUserWidget
@@ -21,10 +18,22 @@ class COZYWOOD_API UShopSellWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	void SelectInventoryItem(UItemBase* InItem, const FText& InName, const FText& InDescription, int32 InPrice, UTexture2D* InIcon);
+	void OnSlotSelected(UShopSellItemSlotWidget* SelectedSlot);
+
+	// Called by slot widget's cancel button
+	void OnSlotDeselected();
+
+	// Called by slot widget's sell button
+	void ExecuteSell(UItemBase* Item, int32 Price);
+
+	// Called explicitly when the widget is shown (also fires from NativeConstruct)
+	void RebuildSellList();
 
 protected:
 	virtual void NativeConstruct() override;
+
+	// Catches clicks on areas not consumed by child buttons (empty widget space)
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 	UFUNCTION()
 	void OnClickedBack();
@@ -32,22 +41,18 @@ protected:
 	UFUNCTION()
 	void OnClickedClose();
 
+	// Bind a transparent background button in the Blueprint for reliable "click elsewhere" deselection
 	UFUNCTION()
-	void OnClickedSell();
-
-	UFUNCTION()
-	void OnClickedCancelSelection();
+	void OnClickedDeselectZone();
 
 	UFUNCTION()
 	void HandleMoneyChanged(int32 NewMoneyAmount);
 
-	void RebuildSellList();
 	void RefreshMoneyText();
-	void ShowSelectedPanel(bool bShow);
+	void DeselectCurrentSlot();
 
-protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-	TSubclassOf<UShopItemSlotWidget> ShopItemSlotWidgetClass;
+	UPROPERTY(EditDefaultsOnly, Category = "Shop")
+	TSubclassOf<UShopSellItemSlotWidget> ShopSellItemSlotWidgetClass;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	UButton* BackButton;
@@ -55,35 +60,16 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	UButton* CloseButton;
 
+	// Optional: place a transparent full-area button behind the item list in Blueprint
+	// to catch "click elsewhere" events inside a ScrollBox
 	UPROPERTY(meta = (BindWidgetOptional))
-	UButton* SellButton;
+	UButton* DeselectZoneButton;
 
 	UPROPERTY(meta = (BindWidgetOptional))
-	UButton* CancelSelectionButton;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UWrapBox* ItemListWrapBox;
+	UPanelWidget* ItemListWrapBox;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	UTextBlock* MoneyText;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UTextBlock* SelectedItemNameText;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UTextBlock* SelectedItemDescriptionText;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UTextBlock* SelectedItemPriceText;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UImage* SelectedItemImage;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UTextBlock* SellButtonText;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	UWidget* SelectedDetailBox;
 
 private:
 	UPROPERTY()
@@ -93,7 +79,5 @@ private:
 	UEconomyComponent* CachedEconomy = nullptr;
 
 	UPROPERTY()
-	UItemBase* SelectedInventoryItem = nullptr;
-
-	int32 SelectedPrice = 0;
+	UShopSellItemSlotWidget* CurrentlySelectedSlot;
 };

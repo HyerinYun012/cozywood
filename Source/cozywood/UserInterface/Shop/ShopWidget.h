@@ -2,13 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "ShopDialogueWidget.generated.h"
+#include "ShopWidget.generated.h"
 
 class UButton;
+class UPanelWidget;
 class UTextBlock;
 
 UCLASS()
-class COZYWOOD_API UShopDialogueWidget : public UUserWidget
+class COZYWOOD_API UShopWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
@@ -25,8 +26,15 @@ protected:
 	UButton* CloseButton;
 
 	UPROPERTY(meta = (BindWidgetOptional))
-	UTextBlock* DialogueText;
+	UPanelWidget* BuyPanel;
 
+	UPROPERTY(meta = (BindWidgetOptional))
+	UPanelWidget* SellPanel;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	UTextBlock* MoneyText;
+
+private:
 	UFUNCTION()
 	void OnClickedBuy();
 
@@ -35,4 +43,7 @@ protected:
 
 	UFUNCTION()
 	void OnClickedClose();
+
+	void ShowBuyPanel();
+	void ShowSellPanel();
 };
